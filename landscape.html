@@ -1,0 +1,330 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+
+<html lang="en">
+
+<head>
+	<title>dot landscape</title>
+	<meta http-equiv="content-type" content="text/html;charset=ISO-8859-1">
+	<meta http-equiv="content-language" content="en">
+	<meta name="description" content="javascript+canvas dot landscape">
+	<meta name="keywords" content="landscape,dot,3d,effect,javascript,canvas,dhtml,webdesign,google,chrome,experiment,demo,code">
+	<meta name="author" content="REZ">
+	<meta name="generator" content="REZ">
+	<meta name="version" content="0.4">
+	<meta name="copyright" content="REZ 2009">
+	<meta name="robots" content="all">
+	<meta name="viewport" content="width=device-width,user-scalable=0,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0">
+	<style type="text/css">
+	.lnk1 {font:bold 11px/100% verdana;color:#a0a0a0;letter-spacing:-1px;text-shadow:#707070 0px 0px 4px}
+	.lnk2 {font:bold 11px/100% verdana;color:#ffffff;letter-spacing:-1px;text-shadow:#70e0ff 0px 0px 4px}
+	body  {margin:0;padding:0;background-color:#000000;font-size:0;overflow:hidden}
+	div   {margin:0;padding:0;position:absolute;font-size:0;overflow:hidden}
+	.bar  {background-color:#404040;height:5px}
+	canvas{background-color:#000000;overflow:hidden}
+	</style>
+</head>
+
+<script type="text/javascript">
+google_ad_client='pub-5142607733332317';
+google_ad_slot='7763889105';
+google_ad_width=468;
+google_ad_height=15;
+</script>
+
+<script type="text/javascript">
+function $i(id) { return document.getElementById(id); }
+function $r(parent,child) { (document.getElementById(parent)).removeChild(document.getElementById(child)); }
+function $t(name) { return document.getElementsByTagName(name); }
+function $c(code) { return String.fromCharCode(code); }
+function $h(value) { return ('0'+Math.max(0,Math.min(255,Math.round(value))).toString(16)).slice(-2); }
+function _i(id,value) { $t('div')[id].innerHTML+=value; }
+function _h(value) { return !hires?value:Math.round(value/2); }
+
+function get_screen_size()
+	{
+	var w=document.documentElement.clientWidth;
+	var h=document.documentElement.clientHeight;
+	return Array(w,h);
+	}
+
+var url=document.location.href;
+
+var flag=true;
+var test=true;
+var n1=parseInt((url.indexOf('n=')!=-1)?url.substring(url.indexOf('n=')+2,((url.substring(url.indexOf('n=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('n=')+2+(url.substring(url.indexOf('n=')+2,url.length)).indexOf('&'):url.length):64);
+var n2=n1;
+var w=0;
+var h=0;
+var x=0;
+var y=0;
+var z=0;
+var p_x=0;
+var p_y=0;
+var star_ratio=512+256;
+var star_color_ratio=0;
+var star_speed=0;
+var star=new Array(n1*n2);
+var color_r,color_g,color_b;
+var dot_w=24;
+
+var cursor_x=0;
+var cursor_y=0;
+var mouse_x=0;
+var mouse_y=0;
+
+var context;
+var sky;
+var sun;
+var fog;
+
+var style=Array('positive','negative','crater','cloud','waves','flat');
+var style_id=style.length;
+
+var key;
+
+var timeout;
+var fps=20;
+
+var angle=Math.PI/180;
+var angle1=1;
+var angle2=3;
+var angle3=2;
+var angle4=2;
+var start_a=0;
+var start_b=45;
+var start_c=90;
+var start_d=135;
+var a=start_a;
+var b=start_b;
+var c=start_c;
+var d=start_d;
+
+function init()
+	{
+	clearTimeout(timeout);
+	var k=0;
+	var radius=h/24;
+	a=start_a;
+	c=start_b;
+	for(var i=0;i<n1;i++)
+		{
+		b=start_b;
+		d=start_d;
+		for(var j=0;j<n2;j++)
+			{
+			var val=radius*Math.sin(angle*(a+c))+(radius/2)*Math.cos(angle*c)+radius*Math.cos(angle*(b+d))+(radius/2)*Math.sin(angle*d);
+			star[k]=new Array(5);
+			star[k][0]=w/n1*j-x;//+((i%2==0)?-(w/2)/n1:0);
+			star[k][1]=y-h/4;
+			switch(style_id)
+				{
+				case 0: color_r=255; color_g=255; color_b=255; star[k][1]+=(val<0)?val:0; break;
+				case 1: color_r=255; color_g=255; color_b=255; star[k][1]+=(val>0)?val:0; break;
+				case 2: color_r=176; color_g=144; color_b=160; star[k][1]+=(val<0)?((val>-radius/2)?val:radius/2):0; break;
+				case 3: color_r=255; color_g=176; color_b=64; star[k][1]+=(val<0)?((val>-radius)?0:-radius*1.5):0; break;
+				case 4: color_r=64; color_g=128; color_b=192; star[k][1]+=radius/2*Math.cos(angle*(d/2+c*2)); break;
+				case 5: color_r=128; color_g=160; color_b=96; star[k][0]+=Math.random(0,1)*radius/2; break;
+				}
+			star[k][1]+=Math.random(0,1)*radius/8;
+			star[k][2]=z/n1*i+((j%2==0)?-(z/2)/n1:0); if(star[k][2]<0) star[k][2]+=z;
+			star[k][3]=0;
+			star[k][4]=0;
+			b+=360*angle2/n2;
+			d+=360*angle4/n2;
+			k++;
+			}
+		a+=360*angle1/n1;
+		c+=360*angle3/n2;
+		}
+	var starfield=$i('starfield');
+	starfield.style.position='absolute';
+	starfield.width=w;
+	starfield.height=h;
+	context=starfield.getContext('2d');
+	context.globalAlpha=0.5;
+	sky=context.createLinearGradient(0,0,0,h);
+	sky.addColorStop(0,'rgb(0,0,0)');
+	sky.addColorStop(0.025,'rgb(0,128,192)');
+	sky.addColorStop(0.17,'rgb(192,232,240)');
+	sky.addColorStop(0.18,'rgb(255,255,255)');
+	sky.addColorStop(0.2,'rgb(80,64,128)');
+	sky.addColorStop(0.3,'rgb(64,32,80)');
+	sky.addColorStop(0.975,'rgb(24,32,16)');
+	sky.addColorStop(1,'rgb(8,0,16)');
+	fog=context.createRadialGradient(x,0,0,x,0,h);
+	fog.addColorStop(0,'rgba(255,255,255,0)');
+	fog.addColorStop(0.1,'rgba(255,96,160,0.2)');
+	fog.addColorStop(0.4,'rgba(255,224,128,0.5)');
+	fog.addColorStop(0.6,'rgba('+Math.round((color_r+255)/2)+','+Math.round((color_g+224)/2)+','+Math.round((color_b+128)/2)+',0.5)');
+	fog.addColorStop(0.8,'rgba('+color_r+','+color_g+','+color_b+',0.5)');
+	fog.addColorStop(1,'rgba('+color_r+','+color_g+','+color_b+',0)');
+	sun=context.createRadialGradient(x,h/10,0,x,h/10,h*0.1);
+	sun.addColorStop(0,'rgb(255,255,255)');
+	sun.addColorStop(0.1,'rgb(255,255,255)');
+	sun.addColorStop(0.2,'rgba(255,232,144,0.75)');
+	sun.addColorStop(1,'rgba(255,255,255,0)');
+	}
+
+function anim()
+	{
+	mouse_x=(cursor_x-x)/32;
+	context.fillStyle=sky;
+	context.fillRect(0,0,w,h);
+	context.fillStyle=sun;
+	context.fillRect(0,0,w,h);
+	context.fillStyle=fog;
+	var k=0;
+	for(var i=0;i<n1;i++)
+		{
+		var dot_size=dot_w-star[k][2]*star_color_ratio;
+		for(var j=0;j<n2;j++)
+			{
+			test=true;
+			star[k][0]+=mouse_x; if(star[k][0]>x) { star[k][0]-=w; test=false; } if(star[k][0]<-x) { star[k][0]+=w; test=false; }
+			star[k][2]-=star_speed; if(star[k][2]>z) { star[k][2]-=z; test=false; } if(star[k][2]<0) { star[k][2]+=z; test=false; }
+			star[k][3]=x+star[k][0]/star[k][2]*star_ratio;
+			star[k][4]=horizon+star[k][1]/star[k][2]*star_ratio;
+			if(star[k][3]>-dot_size&&star[k][3]<w+dot_size&&test) context.fillRect(star[k][3],star[k][4],dot_size,dot_size);
+			k++;
+			}
+		}
+	timeout=setTimeout('anim()',fps);
+	}
+
+function update_style()
+	{
+	style_id++;
+	if(style_id>style.length-1) style_id=0;
+	$i('menu_style').innerHTML=style[style_id]+'&nbsp;';
+	init();
+	anim();
+	}
+
+function randomize()
+	{
+	angle1=Math.round(Math.random(0,1)*5);
+	angle2=Math.round(Math.random(0,1)*5);
+	angle3=Math.round(Math.random(0,1)*5);
+	angle4=Math.round(Math.random(0,1)*5);
+	start_a=Math.round(Math.random(0,1)*18)*10;
+	start_b=Math.round(Math.random(0,1)*18)*10;
+	start_c=Math.round(Math.random(0,1)*18)*10;
+	start_d=Math.round(Math.random(0,1)*18)*10;
+	init();
+	anim();
+	}
+
+function move(evt)
+	{
+	evt=evt||event;
+	cursor_x=evt.pageX-p_x;
+	cursor_y=evt.pageY-p_y-h/2;
+	star_speed=(cursor_y)/16;
+	}
+
+function key_manager(evt)
+	{
+	evt=evt||event;
+	key=evt.which||evt.keyCode;
+	switch(key)
+		{
+		case 27: case 13: case 32:
+			flag=flag?false:true;
+			if(flag)
+				timeout=setTimeout('anim()',fps);
+			else
+				clearTimeout(timeout);
+			break;
+		}
+	top.status='key='+((key<100)?'0':'')+((key<10)?'0':'')+key;
+	}
+
+function key_release()
+	{
+	switch(key)
+		{
+		case 27: case 13: case 32:
+			break;
+		}
+	}
+
+function mouse_wheel(evt)
+	{
+	evt=evt||event;
+	var delta=0;
+	if(evt.wheelDelta)
+		{
+		delta=evt.wheelDelta/120;
+		}
+	else if(evt.detail)
+		{
+		delta=-evt.detail/3;
+		}
+	dot_w+=(delta>=0)?-1:1;
+	star_color_ratio=dot_w/z;
+	//star_ratio+=(delta>=0)?-4:4;
+	if(evt.preventDefault) evt.preventDefault();
+	}
+
+function resize()
+	{
+	var screen_w=get_screen_size()[0];
+	var screen_h=get_screen_size()[1];
+	w=468;
+	h=350-15;
+	x=Math.round(w/2);
+	y=Math.round(h/2);
+	z=(w+h);
+	horizon=Math.round(h*0.04);//0.08;
+	star_color_ratio=dot_w/z;
+	p_x=Math.round((screen_w-w)/2);
+	p_y=Math.round((screen_h-h)/2);
+	var starfield=$i('starfield');
+	starfield.style.left=p_x+'px';
+	starfield.style.top=p_y+'px';
+	var menu=$i('menu');
+	menu.style.left=p_x+'px';
+	menu.style.top=(p_y-15)+'px';
+	menu.style.width=468+'px';
+	menu.style.height=15+'px';
+	var bar1=$i('bar1');
+	bar1.style.top='31px';
+	bar1.style.width=screen_w+'px';
+	var bar2=$i('bar2');
+	bar2.style.top=(screen_h-31-5)+'px';
+	bar2.style.width=screen_w+'px';
+	var rez=$i('rez');
+	rez.style.display='block';
+	rez.style.left=(screen_w-rez.offsetWidth-4)+'px';
+	rez.style.top=(screen_h-rez.offsetHeight-2)+'px';
+	var adsense=$i('adsense');
+	adsense.style.position='absolute';
+	adsense.style.left=p_x+'px';
+	adsense.style.top=(p_y+h)+'px';
+	adsense.style.width=468+'px';
+	adsense.style.height=15+'px';
+	adsense.style.display='block';
+	}
+
+document.onmousemove=move;
+document.onkeypress=key_manager;
+document.onkeyup=key_release;
+document.onmousewheel=mouse_wheel; if(window.addEventListener) window.addEventListener('DOMMouseScroll',mouse_wheel,false);
+
+</script>
+
+<body onload="resize();update_style();" onresize="resize()" onorientationchange="resize()">
+<div id="bar1" class="bar"></div>
+<div id="bar2" class="bar"></div>
+<div id="title" style="left:4px;top:2px;font:bold 34px/100% arial;letter-spacing:-4px;color:#606060;text-shadow:#606060 0px 0px 4px">dot landscape&nbsp;</div>
+<div id="menu">
+	<div id="menu_style" class="lnk1" style="cursor:pointer" onclick="update_style()" onmouseover="this.className='lnk2'" onmouseout="this.className='lnk1'"></div>
+	<div id="menu_random" class="lnk1" style="left:64px;cursor:pointer" onclick="randomize()" onmouseover="this.className='lnk2'" onmouseout="this.className='lnk1'">randomize&nbsp;</div>
+</div>
+<canvas id="starfield" style="background-color:#000000"></canvas>
+<div id="rez" class="lnk1" style="width:22px;height:12px;cursor:pointer;display:none" onclick="document.location.href='http://www.chiptune.com'" onmouseover="this.className='lnk2'" onmouseout="this.className='lnk1'">REZ&nbsp;</div>
+<div id="adsense" style="background-color:transparent;display:none"><script type="text/javascript" src="http://pagead2.googlesyndication.com/pagead/show_ads.js"></script></div>
+</body>
+<script type="text/javascript" src="http://www.google-analytics.com/urchin.js"></script>
+<script type="text/javascript"> var _uacct='UA-241365-1'; urchinTracker(); </script>
+</html>
