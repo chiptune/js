@@ -1,35 +1,92 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-
+<!doctype html>
 <html lang="en">
 
 <head>
-	<title>Starfield</title>
-	<meta http-equiv="content-type" content="text/html;charset=ISO-8859-1">
-	<meta http-equiv="content-language" content="en">
-	<meta name="description" content="javascript+canvas starfield">
-	<meta name="keywords" content="starfield, star,3d,effect,visual,javascript,canvas,dhtml,webdesign,google,chrome">
-	<meta name="author" content="REZ">
-	<meta name="generator" content="REZ">
-	<meta name="version" content="2.1">
-	<meta name="copyright" content="REZ 2007-2009">
-	<meta name="robots" content="all">
-	<meta name="viewport" content="width=device-width,user-scalable=0,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0">
-	<style type="text/css">
-	body  {margin:0;padding:0;background-color:#000000;font-size:0;overflow:hidden}
-	div   {margin:0;padding:0;position:absolute;font-size:0;overflow:hidden}
-	canvas{background-color:#000000;overflow:hidden}
-	</style>
-</head>
+<title>starfield</title>
+<meta http-equiv="content-type" content="text/html;charset=utf-8">
+<meta http-equiv="content-language" content="en">
+<meta name="description" content="starfield">
+<meta name="author" content="rez">
+<meta name="version" content="3.0">
+<meta name="copyright" content="rez 2007-2015">
+<meta name="robots" content="all">
+<style type="text/css">
+body {margin:0px;padding:0px;overflow:hidden;user-select:none}
+</style>
+<script type="application/javascript">
+/*-----------------------------------------------------------------------------.
+|                 /\______  /\______  ____/\______     __                      |
+|                 \____   \/  \__   \/  _ \____   \ __/  \____                 |
+|                  / _/  _/    \/   /   /  / _/  _// / / / / /                 |
+|                 /  \   \  /\ /   /\  /  /  \   \/ /\  / / /                  |
+|                 \__/\   \/RTX______\___/\__/\   \/ / /_/_/                   |
+|                      \___)   \__)            \___) \/                        |
+|------------------------------------------------------------------------------|
+|################################## STARFIELD #################################|
+`-----------------------------------------------------------------------------*/
 
-<script type="text/javascript">
-google_ad_client='pub-5142607733332317';
-google_ad_slot='6304267293';
-google_ad_width=728;
-google_ad_height=15;
-</script>
+/*jslint white,this,maxlen:80*/
+/*global window,jslint*/
 
-<script type="text/javascript">
-function $i(id) { return document.getElementById(id); }
+Number.prototype.clamp=function(min,max)
+  {
+  'use strict';
+  return Math.max(min,Math.min(this,max));
+  };
+
+var lol={}
+
+lol.util=
+  {
+  isboolean:function(v){if(typeof v==='boolean'){return true;}return false;},
+  isnumber:function(v){if(typeof v==='number'){return true;}return false;},
+  isstring:function(v){if(typeof v==='string'){return true;}return false;},
+  isobject:function(v){if(typeof v==='object'){return true;}return false;},
+  isfunction:function(v){if(typeof v==='function'){return true;}return false;},
+  isempty:function(obj)
+    {
+    if(window.Object.getOwnPropertyNames(obj).length===0){return true;}
+    return false;
+    },
+  isffx:function(){return (/firefox/i).test(window.navigator.userAgent);},
+  copy:function(v){return v.slice(0);},
+  clone:function(v){return Object.create({x:v.x,y:v.y,z:v.z});},
+  sign:function(v)
+    {
+    v=parseFloat(Number(v).toFixed(1));
+    if(v===0){return '&nbsp;';}
+    if(v<0){return '';}
+    if(v>0){return '+';}
+    },
+  random:function(n)
+    {
+    var i=0,type,start,len,rnd='';
+    while(i<n)
+      {
+      type=Math.round(Math.random()*2);
+      if(type===0)
+        {
+        start=48;
+        len=10;
+        }
+      else
+        {
+        start=(Math.round(Math.random()*2)%2===0)?65:97;
+        len=26;
+        }
+      rnd+=String.fromCharCode(start+Math.floor(Math.random()*len));
+      i+=1;
+      }
+    return rnd;
+    },
+  interpolate:function(from,to,n,i){return from+(to-from)/n*i;},
+  time:function(){return (new Date()).getTime();}
+  };
+
+lol.i=function(id){return window.document.getElementById(String(id));};
+lol.el=function(el){return window.document.createElement(String(el));};
+lol.tn=function(txt){return window.document.createTextNode(String(txt));};
+
 function $r(parent,child) { (document.getElementById(parent)).removeChild(document.getElementById(child)); }
 function $t(name) { return document.getElementsByTagName(name); }
 function $c(code) { return String.fromCharCode(code); }
@@ -38,17 +95,23 @@ function _i(id,value) { $t('div')[id].innerHTML+=value; }
 function _h(value) { return !hires?value:Math.round(value/2); }
 
 function get_screen_size()
-	{
-	var w=document.documentElement.clientWidth;
-	var h=document.documentElement.clientHeight;
-	return Array(w,h);
-	}
+  {
+  var w=document.documentElement.clientWidth;
+  var h=document.documentElement.clientHeight;
+  return Array(w,h);
+  };
+
+lol.init=function()
+  {
+  var evt=lol.util.isffx()?'DOMMouseScroll':'mousewheel';
+  window.addEventListener(evt,lol.mouse.wheel,false);
+  };
 
 var url=document.location.href;
 
 var flag=true;
 var test=true;
-var n=parseInt((url.indexOf('n=')!=-1)?url.substring(url.indexOf('n=')+2,((url.substring(url.indexOf('n=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('n=')+2+(url.substring(url.indexOf('n=')+2,url.length)).indexOf('&'):url.length):512);
+var n=parseInt((url.indexOf('n=')!=-1)?url.substring(url.indexOf('n=')+2,((url.substring(url.indexOf('n=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('n=')+2+(url.substring(url.indexOf('n=')+2,url.length)).indexOf('&'):url.length):2048);
 var w=0;
 var h=0;
 var x=0;
@@ -57,7 +120,7 @@ var z=0;
 var star_color_ratio=0;
 var star_x_save,star_y_save;
 var star_ratio=256;
-var star_speed=2;
+var star_speed=1;
 var star_speed_save=0;
 var star=new Array(n);
 var color;
@@ -83,184 +146,167 @@ var timeout;
 var fps=0;
 
 function init()
-	{
-	var a=0;
-	for(var i=0;i<n;i++)
-		{
-		star[i]=new Array(5);
-		star[i][0]=Math.random()*w*2-x*2;
-		star[i][1]=Math.random()*h*2-y*2;
-		star[i][2]=Math.round(Math.random()*z);
-		star[i][3]=0;
-		star[i][4]=0;
-		}
-	var starfield=$i('starfield');
-	starfield.style.position='absolute';
-	starfield.width=w;
-	starfield.height=h;
-	context=starfield.getContext('2d');
-	//context.lineCap='round';
-	context.fillStyle='rgb(0,0,0)';
-	context.strokeStyle='rgb(255,255,255)';
-	var adsense=$i('adsense');
-	adsense.style.left=Math.round((w-728)/2)+'px';
-	adsense.style.top=(h-15)+'px';
-	adsense.style.width=728+'px';
-	adsense.style.height=15+'px';
-	adsense.style.display='block';
-	}
+  {
+  var a=0;
+  for(var i=0;i<n;i++)
+    {
+    star[i]=new Array(5);
+    star[i][0]=Math.random()*w*2-x*2;
+    star[i][1]=Math.random()*h*2-y*2;
+    star[i][2]=Math.round(Math.random()*z);
+    star[i][3]=0;
+    star[i][4]=0;
+    }
+  var starfield=lol.i('starfield');
+  starfield.style.position='absolute';
+  starfield.width=w;
+  starfield.height=h;
+  context=starfield.getContext('2d');
+  //context.lineCap='round';
+  context.fillStyle='rgb(0,0,0)';
+  context.strokeStyle='rgb(255,255,255)';
+  }
 
 function anim()
-	{
-	mouse_x=cursor_x-x;
-	mouse_y=cursor_y-y;
-	if(hyperspace==1)
-		{
-		star_speed=star_speed*1.025;
-		star_ratio=star_ratio*0.99;
-		var c=Math.round(star_speed*2.5)-2;
-		context.fillStyle='rgb('+c+','+c+','+c+')';
-		if(star_speed>112)
-			{
-			context.fillStyle='rgb(0,0,0)';
-			star_speed=16;
-			star_ratio=256;
-			hyperspace=2;
-			}
-		}
-	if(hyperspace==2)
-		{
-		if(star_speed>2)
-			{
-			star_speed*=0.99;
-			}
-		else
-			{
-			star_speed=2;
-			hyperspace=0;
-			}
-		}
-	context.fillRect(0,0,w,h);
-	for(var i=0;i<n;i++)
-		{
-		test=true;
-		star_x_save=star[i][3];
-		star_y_save=star[i][4];
-		star[i][0]+=mouse_x>>4; if(star[i][0]>x<<1) { star[i][0]-=w<<1; test=false; } if(star[i][0]<-x<<1) { star[i][0]+=w<<1; test=false; }
-		star[i][1]+=mouse_y>>4; if(star[i][1]>y<<1) { star[i][1]-=h<<1; test=false; } if(star[i][1]<-y<<1) { star[i][1]+=h<<1; test=false; }
-		star[i][2]-=star_speed; if(star[i][2]>z) { star[i][2]-=z; test=false; } if(star[i][2]<0) { star[i][2]+=z; test=false; }
-		star[i][3]=x+(star[i][0]/star[i][2])*star_ratio;
-		star[i][4]=y+(star[i][1]/star[i][2])*star_ratio;
-		if(star_x_save>0&&star_x_save<w&&star_y_save>0&&star_y_save<h&&test)
-			{
-			context.lineWidth=(1-star_color_ratio*star[i][2])*2;
-			context.beginPath();
-			context.moveTo(star_x_save,star_y_save);
-			context.lineTo(star[i][3],star[i][4]);
-			context.stroke();
-			context.closePath();
-			}
-		}
-	timeout=setTimeout('anim()',fps);
-	}
+  {
+  mouse_x=cursor_x-x;
+  mouse_y=cursor_y-y;
+  if(hyperspace==1)
+    {
+    star_speed=star_speed*1.025;
+    star_ratio=star_ratio*0.99;
+    var c=Math.round(star_speed*2.5)-2;
+    context.fillStyle='rgb('+c+','+c+','+c+')';
+    if(star_speed>112)
+      {
+      context.fillStyle='rgb(0,0,0)';
+      star_speed=16;
+      star_ratio=256;
+      hyperspace=2;
+      }
+    }
+  if(hyperspace==2)
+    {
+    if(star_speed>2)
+      {
+      star_speed*=0.99;
+      }
+    else
+      {
+      star_speed=2;
+      hyperspace=0;
+      }
+    }
+  context.fillRect(0,0,w,h);
+  for(var i=0;i<n;i++)
+    {
+    test=true;
+    star_x_save=star[i][3];
+    star_y_save=star[i][4];
+    star[i][0]+=mouse_x>>4; if(star[i][0]>x<<1) { star[i][0]-=w<<1; test=false; } if(star[i][0]<-x<<1) { star[i][0]+=w<<1; test=false; }
+    star[i][1]+=mouse_y>>4; if(star[i][1]>y<<1) { star[i][1]-=h<<1; test=false; } if(star[i][1]<-y<<1) { star[i][1]+=h<<1; test=false; }
+    star[i][2]-=star_speed; if(star[i][2]>z) { star[i][2]-=z; test=false; } if(star[i][2]<0) { star[i][2]+=z; test=false; }
+    star[i][3]=x+(star[i][0]/star[i][2])*star_ratio;
+    star[i][4]=y+(star[i][1]/star[i][2])*star_ratio;
+    if(star_x_save>0&&star_x_save<w&&star_y_save>0&&star_y_save<h&&test)
+      {
+      context.lineWidth=(1-star_color_ratio*star[i][2])*2;
+      context.beginPath();
+      context.moveTo(star_x_save,star_y_save);
+      context.lineTo(star[i][3],star[i][4]);
+      context.stroke();
+      context.closePath();
+      }
+    }
+  timeout=setTimeout('anim()',fps);
+  }
 
 function move(evt)
-	{
-	evt=evt||event;
-	cursor_x=evt.pageX-canvas_x;
-	cursor_y=evt.pageY-canvas_y;
-	}
+  {
+  evt=evt||event;
+  cursor_x=evt.pageX-canvas_x;
+  cursor_y=evt.pageY-canvas_y;
+  }
 
 function key_manager(evt)
-	{
-	evt=evt||event;
-	key=evt.which||evt.keyCode;
-	//ctrl=evt.ctrlKey;
-	switch(key)
-		{
-		case 27:
-			flag=flag?false:true;
-			if(flag)
-				{
-				timeout=setTimeout('anim()',fps);
-				}
-			else
-				{
-				clearTimeout(timeout);
-				}
-			break;
-		case 32:
-			//star_speed_save=(star_speed!=0)?star_speed:star_speed_save;
-			//star_speed=(star_speed!=0)?0:star_speed_save;
-			hyperspace=1;
-			break;
-		case 13:
-			context.fillStyle='rgba(0,0,0,'+opacity+')';
-			break;
-		}
-	top.status='key='+((key<100)?'0':'')+((key<10)?'0':'')+key;
-	}
+  {
+  evt=evt||event;
+  key=evt.which||evt.keyCode;
+  //ctrl=evt.ctrlKey;
+  switch(key)
+    {
+    case 27:
+      flag=flag?false:true;
+      if(flag)
+        {
+        timeout=setTimeout('anim()',fps);
+        }
+      else
+        {
+        clearTimeout(timeout);
+        }
+      break;
+    case 32:
+      //star_speed_save=(star_speed!=0)?star_speed:star_speed_save;
+      //star_speed=(star_speed!=0)?0:star_speed_save;
+      hyperspace=1;
+      break;
+    case 13:
+      context.fillStyle='rgba(0,0,0,'+opacity+')';
+      break;
+    }
+  top.status='key='+((key<100)?'0':'')+((key<10)?'0':'')+key;
+  }
 
 function release()
-	{
-	switch(key)
-		{
-		case 13:
-			context.fillStyle='rgb(0,0,0)';
-			break;
-		}
-	}
+  {
+  switch(key)
+    {
+    case 13:
+      context.fillStyle='rgb(0,0,0)';
+      break;
+    }
+  }
 
-function mouse_wheel(evt)
-	{
-	evt=evt||event;
-	var delta=0;
-	if(evt.wheelDelta)
-		{
-		delta=evt.wheelDelta/120;
-		}
-	else if(evt.detail)
-		{
-		delta=-evt.detail/3;
-		}
-	star_speed+=(delta>=0)?-0.2:0.2;
-	if(evt.preventDefault) evt.preventDefault();
-	}
+lol.mouse=
+  {
+  wheel:function(e)
+    {
+    e=e||window.event;
+    var delta=e.wheelDelta/120;
+    star_speed-=delta*0.1;
+    if(e.preventDefault){e.preventDefault();}
+    }
+  };
 
 function start()
-	{
-	resize();
-	anim();
-	}
+  {
+  resize();
+  anim();
+  }
 
 function resize()
-	{
-	w=parseInt((url.indexOf('w=')!=-1)?url.substring(url.indexOf('w=')+2,((url.substring(url.indexOf('w=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('w=')+2+(url.substring(url.indexOf('w=')+2,url.length)).indexOf('&'):url.length):get_screen_size()[0]);
-	h=parseInt((url.indexOf('h=')!=-1)?url.substring(url.indexOf('h=')+2,((url.substring(url.indexOf('h=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('h=')+2+(url.substring(url.indexOf('h=')+2,url.length)).indexOf('&'):url.length):get_screen_size()[1]);
-	x=Math.round(w/2);
-	y=Math.round(h/2);
-	z=(w+h)/2;
-	star_color_ratio=1/z;
-	cursor_x=x;
-	cursor_y=y;
-	init();
-	}
+  {
+  w=parseInt((url.indexOf('w=')!=-1)?url.substring(url.indexOf('w=')+2,((url.substring(url.indexOf('w=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('w=')+2+(url.substring(url.indexOf('w=')+2,url.length)).indexOf('&'):url.length):get_screen_size()[0]);
+  h=parseInt((url.indexOf('h=')!=-1)?url.substring(url.indexOf('h=')+2,((url.substring(url.indexOf('h=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('h=')+2+(url.substring(url.indexOf('h=')+2,url.length)).indexOf('&'):url.length):get_screen_size()[1]);
+  x=Math.round(w/2);
+  y=Math.round(h/2);
+  z=(w+h)/2;
+  star_color_ratio=1/z;
+  cursor_x=x;
+  cursor_y=y;
+  init();
+  }
 
 document.onmousemove=move;
 document.onkeypress=key_manager;
 document.onkeyup=release;
-document.onmousewheel=mouse_wheel; if(window.addEventListener) window.addEventListener('DOMMouseScroll',mouse_wheel,false);
 
+lol.init();
 </script>
-
-<body onload="start()" onresize="resize()" onorientationchange="resize()" onmousedown="context.fillStyle='rgba(0,0,0,'+opacity+')'" onmouseup="context.fillStyle='rgb(0,0,0)'">
+</head>
+<body onload="start()" onresize="resize()" onmousedown="context.fillStyle='rgba(0,0,0,'+opacity+')'" onmouseup="context.fillStyle='rgb(0,0,0)'">
 <canvas id="starfield" style="background-color:#000000"></canvas>
-<div id="adsense" style="position:absolute;background-color:transparent;display:none">
-	<script type="text/javascript" src="http://pagead2.googlesyndication.com/pagead/show_ads.js"></script>
-</div>
 </body>
-
-<script type="text/javascript" src="http://www.google-analytics.com/urchin.js"></script>
-<script type="text/javascript"> var _uacct='UA-241365-1'; urchinTracker(); </script>
 
 </html>
