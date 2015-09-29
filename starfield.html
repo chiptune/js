@@ -34,15 +34,35 @@ Number.prototype.clamp=function(min,max)
   return Math.max(min,Math.min(this,max));
   };
 
+var url=document.location.href;
+
+var flag=true;
+var test=true;
+var n=parseInt((url.indexOf('n=')!=-1)?url.substring(url.indexOf('n=')+2,((url.substring(url.indexOf('n=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('n=')+2+(url.substring(url.indexOf('n=')+2,url.length)).indexOf('&'):url.length):512*4);
+var w=0;
+var h=0;
+var x=0;
+var y=0;
+var z=0;
+var star_color_ratio=0;
+var star=new Array(n);
+var color;
+
+var hyperspace=0;
+
+var timeout;
+var fps=40;
+
 var lol={}
 
-lol.pr={w:3,h:3};     /* pixel ratio */
+lol.id='starfield';
+lol.pr={w:1,h:1};     /* pixel ratio */
 lol.zr=256;           /* perspective */
 lol.timer=0;
 lol.spd=1.0;          /* speed */
 lol.rid=false;        /* frame request id */
 lol.cvs=false;        /* canvas */
-lol.ctx=false;        /* 2d context */
+lol.ctx=false;        /* 2d lol.ctx */
 
 lol.util=
   {
@@ -113,44 +133,10 @@ lol.init=function()
   {
   //document.onkeypress=key_manager;
   //document.onkeyup=release;
+  window.addEventListener('resize',lol.resize,false);
   window.addEventListener('mousemove',lol.mouse.move,false);
   var evt=lol.util.isffx()?'DOMMouseScroll':'mousewheel';
   window.addEventListener(evt,lol.mouse.wheel,false);
-  };
-
-var url=document.location.href;
-
-var flag=true;
-var test=true;
-var n=parseInt((url.indexOf('n=')!=-1)?url.substring(url.indexOf('n=')+2,((url.substring(url.indexOf('n=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('n=')+2+(url.substring(url.indexOf('n=')+2,url.length)).indexOf('&'):url.length):512*4);
-var w=0;
-var h=0;
-var x=0;
-var y=0;
-var z=0;
-var star_color_ratio=0;
-var star_x_save,star_y_save;
-var star=new Array(n);
-var color;
-var opacity=0.1;
-
-var hyperspace=0;
-
-var canvas_x=0;
-var canvas_y=0;
-var canvas_w=0;
-var canvas_h=0;
-var context;
-
-var key;
-var ctrl;
-
-var timeout;
-var fps=0;
-
-function init()
-  {
-  var a=0;
   for(var i=0;i<n;i++)
     {
     star[i]=new Array(5);
@@ -160,78 +146,120 @@ function init()
     star[i][3]=0;
     star[i][4]=0;
     }
-  var starfield=lol.i('starfield');
-  starfield.style.position='absolute';
-  starfield.width=w;
-  starfield.height=h;
-  context=starfield.getContext('2d');
-  //context.lineCap='round';
-  context.fillStyle='rgb(0,0,0)';
-  context.strokeStyle='rgb(255,255,255)';
-  }
+  lol.viewport();
+  lol.resize();
+  lol.anim.start();
+  };
 
-function anim()
+lol.viewport=function()
   {
-  if(hyperspace==1)
+  var w=window.innerWidth,h=window.innerHeight,el=lol.el('div');
+  lol.w=(w+lol.pr.w-w%lol.pr.w)/lol.pr.w;lol.w+=lol.w%2;
+  lol.h=(h+lol.pr.h-h%lol.pr.h)/lol.pr.h;lol.h+=lol.h%2;
+  el.id=lol.id;
+  el.width=lol.w*lol.pr.w;
+  el.height=lol.h*lol.pr.h;
+  el.style.position='absolute';
+  window.document.body.appendChild(el);
+  lol.cvs=lol.el('canvas');
+  lol.cvs.id=lol.id+'-viewport';
+  lol.cvs.style.position='absolute';
+  el.appendChild(lol.cvs);
+  lol.ctx=lol.cvs.getContext('2d');
+  };
+
+lol.resize=function()
+  {
+  w=window.innerWidth;
+  h=window.innerHeight;
+  x=Math.round(w/2);
+  y=Math.round(h/2);
+  z=(w+h)/2;
+  star_color_ratio=1/z;
+  lol.mouse.o={x:x,y:y};
+  //var w=window.innerWidth,h=window.innerHeight,el=lol.i(lol.id);
+  var el=lol.i(lol.id);
+  lol.w=(w+lol.pr.w-w%lol.pr.w)/lol.pr.w;lol.w+=lol.w%2;
+  lol.h=(h+lol.pr.h-h%lol.pr.h)/lol.pr.h;lol.h+=lol.h%2;
+  el.width=lol.w*lol.pr.w;
+  el.height=lol.h*lol.pr.h;
+  lol.cvs.width=lol.w*lol.pr.w;
+  lol.cvs.height=lol.h*lol.pr.h;
+  lol.cvs.style.backgroundColor='#000';
+  lol.ctx.scale(lol.pr.w,lol.pr.h);
+  //lol.anim.update();
+  };
+
+lol.anim=
+  {
+  update:function()
     {
-    lol.spd=lol.spd*1.01;
-    lol.zr=lol.zr*0.99;
-    var c=Math.round(lol.spd*2.5)-2;
-    context.fillStyle='rgb('+c+','+c+','+c+')';
-    if(lol.spd>64)
+    if(hyperspace===1)
       {
-      context.fillStyle='rgb(0,0,0)';
-      lol.spd=16;
-      lol.zr=256;
-      hyperspace=2;
+      lol.spd=lol.spd*1.01;
+      lol.zr=lol.zr*0.99;
+      var c=Math.round(lol.spd*2.5)-2;
+      lol.ctx.fillStyle='rgb('+c+','+c+','+c+')';
+      if(lol.spd>64)
+        {
+        lol.ctx.fillStyle='rgb(0,0,0)';
+        lol.spd=16;
+        lol.zr=256;
+        hyperspace=2;
+        }
       }
-    }
-  if(hyperspace==2)
+    if(hyperspace===2)
+      {
+      if(lol.spd>1)
+        {
+        lol.spd*=0.995;
+        }
+      else
+        {
+        lol.spd=1;
+        hyperspace=0;
+        }
+      }
+    //lol.ctx.fillRect(0,0,w,h);
+    lol.ctx.clearRect(0,0,w,h); /* clear viewport */
+    for(var i=0;i<n;i++)
+      {
+      var test=true,x2=star[i][3],y2=star[i][4];
+      star[i][0]+=lol.mouse.p.x*0.1; if(star[i][0]>x<<1) { star[i][0]-=w<<1; test=false; } if(star[i][0]<-x<<1) { star[i][0]+=w<<1; test=false; }
+      star[i][1]+=lol.mouse.p.y*0.1; if(star[i][1]>y<<1) { star[i][1]-=h<<1; test=false; } if(star[i][1]<-y<<1) { star[i][1]+=h<<1; test=false; }
+      star[i][2]-=lol.spd; if(star[i][2]>z) { star[i][2]-=z; test=false; } if(star[i][2]<0) { star[i][2]+=z; test=false; }
+      star[i][3]=x+(star[i][0]/star[i][2])*lol.zr;
+      star[i][4]=y+(star[i][1]/star[i][2])*lol.zr;
+      if(x2>0&&x2<w&&y2>0&&y2<h&&test)
+        {
+        lol.ctx.lineWidth=(1-star_color_ratio*star[i][2])*2;
+        lol.ctx.beginPath();
+        lol.ctx.moveTo(x2,y2);
+        lol.ctx.lineTo(star[i][3],star[i][4]);
+        lol.ctx.stroke();
+        lol.ctx.closePath();
+        }
+      }
+    timeout=setTimeout('lol.anim.update()',fps);
+    },
+  start:function()
     {
-    if(lol.spd>1)
-      {
-      lol.spd*=0.995;
-      }
-    else
-      {
-      lol.spd=1;
-      hyperspace=0;
-      }
-    }
-  //context.fillRect(0,0,w,h);
-  context.clearRect(0,0,w,h); /* clear viewport */
-  for(var i=0;i<n;i++)
+    timeout=setTimeout('lol.anim.update()',fps);
+    },
+  stop:function()
     {
-    test=true;
-    star_x_save=star[i][3];
-    star_y_save=star[i][4];
-    star[i][0]+=lol.mouse.p.x*0.1; if(star[i][0]>x<<1) { star[i][0]-=w<<1; test=false; } if(star[i][0]<-x<<1) { star[i][0]+=w<<1; test=false; }
-    star[i][1]+=lol.mouse.p.y*0.1; if(star[i][1]>y<<1) { star[i][1]-=h<<1; test=false; } if(star[i][1]<-y<<1) { star[i][1]+=h<<1; test=false; }
-    star[i][2]-=lol.spd; if(star[i][2]>z) { star[i][2]-=z; test=false; } if(star[i][2]<0) { star[i][2]+=z; test=false; }
-    star[i][3]=x+(star[i][0]/star[i][2])*lol.zr;
-    star[i][4]=y+(star[i][1]/star[i][2])*lol.zr;
-    if(star_x_save>0&&star_x_save<w&&star_y_save>0&&star_y_save<h&&test)
-      {
-      context.lineWidth=(1-star_color_ratio*star[i][2])*2;
-      context.beginPath();
-      context.moveTo(star_x_save,star_y_save);
-      context.lineTo(star[i][3],star[i][4]);
-      context.stroke();
-      context.closePath();
-      }
+    clearTimeout(timeout);
     }
-  timeout=setTimeout('anim()',fps);
-  }
+  };
 
 function key_manager(evt)
   {
   evt=evt||event;
-  key=evt.which||evt.keyCode;
-  //ctrl=evt.ctrlKey;
+  var key=evt.which||evt.keyCode;
   switch(key)
     {
     case 27:
-      flag=flag?false:true;
+      flag=!flag;
       if(flag)
         {
         timeout=setTimeout('anim()',fps);
@@ -245,18 +273,6 @@ function key_manager(evt)
       hyperspace=1;
       break;
     case 13:
-      context.fillStyle='rgba(0,0,0,'+opacity+')';
-      break;
-    }
-  top.status='key='+((key<100)?'0':'')+((key<10)?'0':'')+key;
-  }
-
-function release()
-  {
-  switch(key)
-    {
-    case 13:
-      context.fillStyle='rgb(0,0,0)';
       break;
     }
   }
@@ -281,30 +297,8 @@ lol.mouse=
     e.preventDefault();
     }
   };
-
-function start()
-  {
-  resize();
-  anim();
-  }
-
-function resize()
-  {
-  w=parseInt((url.indexOf('w=')!=-1)?url.substring(url.indexOf('w=')+2,((url.substring(url.indexOf('w=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('w=')+2+(url.substring(url.indexOf('w=')+2,url.length)).indexOf('&'):url.length):get_screen_size()[0]);
-  h=parseInt((url.indexOf('h=')!=-1)?url.substring(url.indexOf('h=')+2,((url.substring(url.indexOf('h=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('h=')+2+(url.substring(url.indexOf('h=')+2,url.length)).indexOf('&'):url.length):get_screen_size()[1]);
-  x=Math.round(w/2);
-  y=Math.round(h/2);
-  z=(w+h)/2;
-  star_color_ratio=1/z;
-  lol.mouse.o={x:x,y:y};
-  init();
-  }
-
-lol.init();
 </script>
 </head>
-<body onload="start()" onresize="resize()" onmousedown="context.fillStyle='rgba(0,0,0,'+opacity+')'" onmouseup="context.fillStyle='rgb(0,0,0)'">
-<canvas id="starfield" style="background-color:#000000"></canvas>
-</body>
+<body onload="lol.init()"></body>
 
 </html>
