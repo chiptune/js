@@ -36,22 +36,10 @@ Number.prototype.clamp=function(min,max)
 
 var url=document.location.href;
 
-var flag=true;
-var test=true;
 var n=parseInt((url.indexOf('n=')!=-1)?url.substring(url.indexOf('n=')+2,((url.substring(url.indexOf('n=')+2,url.length)).indexOf('&')!=-1)?url.indexOf('n=')+2+(url.substring(url.indexOf('n=')+2,url.length)).indexOf('&'):url.length):512*4);
-var w=0;
-var h=0;
-var x=0;
-var y=0;
-var z=0;
-var star_color_ratio=0;
 var star=new Array(n);
-var color;
 
 var hyperspace=0;
-
-var timeout;
-var fps=40;
 
 var lol={}
 
@@ -59,7 +47,7 @@ lol.id='starfield';
 lol.pr={w:1,h:1};     /* pixel ratio */
 lol.zr=256;           /* perspective */
 lol.timer=0;
-lol.spd=1.0;          /* speed */
+lol.spd=2.0;          /* speed */
 lol.rid=false;        /* frame request id */
 lol.cvs=false;        /* canvas */
 lol.ctx=false;        /* 2d lol.ctx */
@@ -131,34 +119,30 @@ function get_screen_size()
 
 lol.init=function()
   {
-  //document.onkeypress=key_manager;
   //document.onkeyup=release;
   window.addEventListener('resize',lol.resize,false);
   window.addEventListener('mousemove',lol.mouse.move,false);
-  var evt=lol.util.isffx()?'DOMMouseScroll':'mousewheel';
-  window.addEventListener(evt,lol.mouse.wheel,false);
+  var e=lol.util.isffx()?'DOMMouseScroll':'mousewheel';
+  window.addEventListener(e,lol.mouse.wheel,false);
+  window.addEventListener('keypress',lol.key,false);
+  lol.viewport();
+  lol.resize();
   for(var i=0;i<n;i++)
     {
     star[i]=new Array(5);
-    star[i][0]=Math.random()*w*2-x*2;
-    star[i][1]=Math.random()*h*2-y*2;
-    star[i][2]=Math.round(Math.random()*z);
+    star[i][0]=Math.random()*lol.w*2-lol.x*2;
+    star[i][1]=Math.random()*lol.h*2-lol.y*2;
+    star[i][2]=Math.round(Math.random()*lol.z);
     star[i][3]=0;
     star[i][4]=0;
     }
-  lol.viewport();
-  lol.resize();
   lol.anim.start();
   };
 
 lol.viewport=function()
   {
-  var w=window.innerWidth,h=window.innerHeight,el=lol.el('div');
-  lol.w=(w+lol.pr.w-w%lol.pr.w)/lol.pr.w;lol.w+=lol.w%2;
-  lol.h=(h+lol.pr.h-h%lol.pr.h)/lol.pr.h;lol.h+=lol.h%2;
+  var el=lol.el('div');
   el.id=lol.id;
-  el.width=lol.w*lol.pr.w;
-  el.height=lol.h*lol.pr.h;
   el.style.position='absolute';
   window.document.body.appendChild(el);
   lol.cvs=lol.el('canvas');
@@ -170,35 +154,33 @@ lol.viewport=function()
 
 lol.resize=function()
   {
-  w=window.innerWidth;
-  h=window.innerHeight;
-  x=Math.round(w/2);
-  y=Math.round(h/2);
-  z=(w+h)/2;
-  star_color_ratio=1/z;
-  lol.mouse.o={x:x,y:y};
-  //var w=window.innerWidth,h=window.innerHeight,el=lol.i(lol.id);
-  var el=lol.i(lol.id);
+  var w=window.innerWidth,h=window.innerHeight,el=lol.i(lol.id);
   lol.w=(w+lol.pr.w-w%lol.pr.w)/lol.pr.w;lol.w+=lol.w%2;
   lol.h=(h+lol.pr.h-h%lol.pr.h)/lol.pr.h;lol.h+=lol.h%2;
+  lol.x=Math.round(w/2);
+  lol.y=Math.round(h/2);
+  lol.z=(w+h)/2;
+  lol.r=1/lol.z;
   el.width=lol.w*lol.pr.w;
   el.height=lol.h*lol.pr.h;
   lol.cvs.width=lol.w*lol.pr.w;
   lol.cvs.height=lol.h*lol.pr.h;
   lol.cvs.style.backgroundColor='#000';
   lol.ctx.scale(lol.pr.w,lol.pr.h);
-  //lol.anim.update();
+  lol.mouse.o={x:lol.x,y:lol.y};
+  //if(star.length>0){lol.anim.update();}
   };
 
 lol.anim=
   {
   update:function()
     {
+    var c;
     if(hyperspace===1)
       {
       lol.spd=lol.spd*1.01;
       lol.zr=lol.zr*0.99;
-      var c=Math.round(lol.spd*2.5)-2;
+      c=Math.round(lol.spd*2.5)-2;
       lol.ctx.fillStyle='rgb('+c+','+c+','+c+')';
       if(lol.spd>64)
         {
@@ -220,62 +202,52 @@ lol.anim=
         hyperspace=0;
         }
       }
-    //lol.ctx.fillRect(0,0,w,h);
-    lol.ctx.clearRect(0,0,w,h); /* clear viewport */
+    //lol.ctx.fillRect(0,0,lol.w,lol.h);
+    lol.ctx.clearRect(0,0,lol.w,lol.h); /* clear viewport */
+    //console.log('w='+lol.w+' h='+lol.h+' x='+lol.x+' y='+lol.y+' z='+lol.z);
     for(var i=0;i<n;i++)
       {
       var test=true,x2=star[i][3],y2=star[i][4];
-      star[i][0]+=lol.mouse.p.x*0.1; if(star[i][0]>x<<1) { star[i][0]-=w<<1; test=false; } if(star[i][0]<-x<<1) { star[i][0]+=w<<1; test=false; }
-      star[i][1]+=lol.mouse.p.y*0.1; if(star[i][1]>y<<1) { star[i][1]-=h<<1; test=false; } if(star[i][1]<-y<<1) { star[i][1]+=h<<1; test=false; }
-      star[i][2]-=lol.spd; if(star[i][2]>z) { star[i][2]-=z; test=false; } if(star[i][2]<0) { star[i][2]+=z; test=false; }
-      star[i][3]=x+(star[i][0]/star[i][2])*lol.zr;
-      star[i][4]=y+(star[i][1]/star[i][2])*lol.zr;
-      if(x2>0&&x2<w&&y2>0&&y2<h&&test)
+      star[i][0]+=lol.mouse.p.x*0.1;
+      if(star[i][0]>lol.x<<1){star[i][0]-=lol.w<<1;test=false;}
+      if(star[i][0]<-lol.x<<1){star[i][0]+=lol.w<<1;test=false;}
+      star[i][1]+=lol.mouse.p.y*0.1;
+      if(star[i][1]>lol.y<<1){star[i][1]-=lol.h<<1;test=false;}
+      if(star[i][1]<-lol.y<<1){star[i][1]+=lol.h<<1;test=false;}
+      star[i][2]-=lol.spd;
+      if(star[i][2]>lol.z){star[i][2]-=lol.z;test=false;}
+      if(star[i][2]<0){star[i][2]+=lol.z;test=false;}
+      star[i][3]=lol.x+(star[i][0]/star[i][2])*lol.zr;
+      star[i][4]=lol.y+(star[i][1]/star[i][2])*lol.zr;
+      //if(x2>0&&x2<lol.w&&y2>0&&y2<lol.h&&test)
+      if(test)
         {
-        lol.ctx.lineWidth=(1-star_color_ratio*star[i][2])*2;
+        c=1-lol.r*star[i][2];
+        lol.ctx.fillStyle='rgba(255,255,255,'+c+')';
+        lol.ctx.strokeStyle='rgba(64,128,192,'+c+')';
+        lol.ctx.lineWidth=(1-lol.r*star[i][2])*1.5;
         lol.ctx.beginPath();
         lol.ctx.moveTo(x2,y2);
         lol.ctx.lineTo(star[i][3],star[i][4]);
-        lol.ctx.stroke();
+        lol.ctx.rect(star[i][3]-1,star[i][4]-1,2,2);
         lol.ctx.closePath();
+        lol.ctx.stroke();
+        lol.ctx.fill();
         }
       }
-    timeout=setTimeout('lol.anim.update()',fps);
+    lol.rid=window.requestAnimationFrame(lol.anim.update);
     },
   start:function()
     {
-    timeout=setTimeout('lol.anim.update()',fps);
+    lol.anim.update();
     },
   stop:function()
     {
-    clearTimeout(timeout);
-    }
+    window.cancelAnimationFrame(lol.rid);
+    lol.rid=false;
+    },
+  pause:function(){lol.anim[lol.rid?'stop':'start']();}
   };
-
-function key_manager(evt)
-  {
-  evt=evt||event;
-  var key=evt.which||evt.keyCode;
-  switch(key)
-    {
-    case 27:
-      flag=!flag;
-      if(flag)
-        {
-        timeout=setTimeout('anim()',fps);
-        }
-      else
-        {
-        clearTimeout(timeout);
-        }
-      break;
-    case 32:
-      hyperspace=1;
-      break;
-    case 13:
-      break;
-    }
-  }
 
 lol.mouse=
   {
@@ -285,8 +257,8 @@ lol.mouse=
   move:function(e)
     {
     e=e||window.event;
-    lol.mouse.p.x=((e.pageX-lol.mouse.o.x)/window.innerWidth)*128;
-    lol.mouse.p.y=((e.pageY-lol.mouse.o.y)/window.innerHeight)*128;
+    lol.mouse.p.x=((e.pageX-lol.mouse.o.x)/window.innerWidth)*256;
+    lol.mouse.p.y=((e.pageY-lol.mouse.o.y)/window.innerHeight)*256;
     e.preventDefault();
     },
   wheel:function(e)
@@ -297,8 +269,21 @@ lol.mouse=
     e.preventDefault();
     }
   };
+
+lol.key=function(e)
+  {
+  e=e||window.event;
+  var key=e.keyCode;
+  switch(key)
+    {
+    case 27:lol.anim.pause();break;
+    case 32:hyperspace=1;break;
+    case 13:break;
+    }
+  };
+
 </script>
 </head>
-<body onload="lol.init()"></body>
-
+<body></body>
+<script type="application/javascript">lol.init();</script>
 </html>
