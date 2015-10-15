@@ -45,9 +45,9 @@ var lol={}
 
 lol.id='starfield';
 lol.pr={w:1,h:1};     /* pixel ratio */
-lol.zr=256;           /* perspective */
+lol.zr=256;           /* focale */
 lol.timer=0;
-lol.spd=2.0;          /* speed */
+lol.spd=1;            /* speed */
 lol.rid=false;        /* frame request id */
 lol.cvs=false;        /* canvas */
 lol.ctx=false;        /* 2d lol.ctx */
@@ -130,11 +130,11 @@ lol.init=function()
   for(var i=0;i<n;i++)
     {
     star[i]=new Array(5);
-    star[i][0]=Math.random()*lol.w*2-lol.x*2;
-    star[i][1]=Math.random()*lol.h*2-lol.y*2;
+    star[i][0]=Math.random()*lol.w*3-lol.x*3;
+    star[i][1]=Math.random()*lol.h*3-lol.y*3;
     star[i][2]=Math.round(Math.random()*lol.z);
-    star[i][3]=0;
-    star[i][4]=0;
+    star[i][3]=lol.x;
+    star[i][4]=lol.y;
     }
   lol.anim.start();
   };
@@ -176,15 +176,16 @@ lol.anim=
   update:function()
     {
     var c;
+    lol.ctx.fillStyle='rgba(0,0,0,0.5)';
     if(hyperspace===1)
       {
-      lol.spd=lol.spd*1.01;
+      lol.spd=lol.spd*1.015;
       lol.zr=lol.zr*0.99;
-      c=Math.round(lol.spd*2.5)-2;
-      lol.ctx.fillStyle='rgb('+c+','+c+','+c+')';
+      c=Math.round(lol.spd*4);
+      lol.ctx.fillStyle='rgba('+c+','+c+','+c+',0.5)';
       if(lol.spd>64)
         {
-        lol.ctx.fillStyle='rgb(0,0,0)';
+        lol.ctx.fillStyle='rgba(0,0,0,0.5)';
         lol.spd=16;
         lol.zr=256;
         hyperspace=2;
@@ -194,7 +195,7 @@ lol.anim=
       {
       if(lol.spd>1)
         {
-        lol.spd*=0.995;
+        lol.spd*=0.99;
         }
       else
         {
@@ -202,18 +203,17 @@ lol.anim=
         hyperspace=0;
         }
       }
-    //lol.ctx.fillRect(0,0,lol.w,lol.h);
-    lol.ctx.clearRect(0,0,lol.w,lol.h); /* clear viewport */
-    //console.log('w='+lol.w+' h='+lol.h+' x='+lol.x+' y='+lol.y+' z='+lol.z);
+    lol.ctx.fillRect(0,0,lol.w,lol.h);
+    //lol.ctx.clearRect(0,0,lol.w,lol.h); /* clear viewport */
     for(var i=0;i<n;i++)
       {
       var test=true,x2=star[i][3],y2=star[i][4];
       star[i][0]+=lol.mouse.p.x*0.1;
-      if(star[i][0]>lol.x<<1){star[i][0]-=lol.w<<1;test=false;}
-      if(star[i][0]<-lol.x<<1){star[i][0]+=lol.w<<1;test=false;}
+      if(star[i][0]>lol.x*3){star[i][0]-=lol.w*3;test=false;}
+      if(star[i][0]<-lol.x*3){star[i][0]+=lol.w*3;test=false;}
       star[i][1]+=lol.mouse.p.y*0.1;
-      if(star[i][1]>lol.y<<1){star[i][1]-=lol.h<<1;test=false;}
-      if(star[i][1]<-lol.y<<1){star[i][1]+=lol.h<<1;test=false;}
+      if(star[i][1]>lol.y*3){star[i][1]-=lol.h*3;test=false;}
+      if(star[i][1]<-lol.y*3){star[i][1]+=lol.h*3;test=false;}
       star[i][2]-=lol.spd;
       if(star[i][2]>lol.z){star[i][2]-=lol.z;test=false;}
       if(star[i][2]<0){star[i][2]+=lol.z;test=false;}
@@ -224,12 +224,12 @@ lol.anim=
         {
         c=1-lol.r*star[i][2];
         lol.ctx.fillStyle='rgba(255,255,255,'+c+')';
-        lol.ctx.strokeStyle='rgba(64,128,192,'+c+')';
+        lol.ctx.strokeStyle='rgba(255,255,255,'+(c/4)+')';
         lol.ctx.lineWidth=(1-lol.r*star[i][2])*1.5;
         lol.ctx.beginPath();
         lol.ctx.moveTo(x2,y2);
         lol.ctx.lineTo(star[i][3],star[i][4]);
-        lol.ctx.rect(star[i][3]-1,star[i][4]-1,2,2);
+        lol.ctx.rect(star[i][3]-0.75,star[i][4]-0.75,1.5,1.5);
         lol.ctx.closePath();
         lol.ctx.stroke();
         lol.ctx.fill();
@@ -273,12 +273,11 @@ lol.mouse=
 lol.key=function(e)
   {
   e=e||window.event;
-  var key=e.keyCode;
-  switch(key)
+  console.log(e.keyCode);
+  switch(e.keyCode)
     {
-    case 27:lol.anim.pause();break;
+    case 13:lol.anim.pause();break;
     case 32:hyperspace=1;break;
-    case 13:break;
     }
   };
 
